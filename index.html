@@ -13,7 +13,7 @@
   --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
   --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
-  --debt:#9b9a94;
+  --debt:#9b9a94; --bar:#b9b7af;
   --up:#d03b3b; --down:#2a78d6;           /* 한국식: 상승 빨강, 하락 파랑 */
   --good:#006300;
   --accent:#2a78d6;
@@ -26,7 +26,7 @@
     --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
     --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
-    --debt:#5d5c57; --up:#e66767; --down:#3987e5; --good:#0ca30c; --accent:#3987e5;
+    --debt:#5d5c57; --bar:#5d5c57; --up:#e66767; --down:#3987e5; --good:#0ca30c; --accent:#3987e5;
   }
 }
 :root[data-theme="dark"]{
@@ -35,7 +35,7 @@
   --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
   --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
-  --debt:#5d5c57; --up:#e66767; --down:#3987e5; --good:#0ca30c; --accent:#3987e5;
+  --debt:#5d5c57; --bar:#5d5c57; --up:#e66767; --down:#3987e5; --good:#0ca30c; --accent:#3987e5;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -150,7 +150,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis)}
 .dtrack .zero{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--axis)}
 .dfill{position:absolute;top:1px;height:12px;border-radius:4px}
 .dfill.pos{background:var(--up)} .dfill.neg{background:var(--down)} .dfill.neu{background:var(--s1)}
-table.rt{min-width:520px}
+table.rt{min-width:520px} table.rt.compact{min-width:0} table.rt.compact td,table.rt.compact th{padding-left:6px;padding-right:6px}
 table.rt td.up{color:var(--up)} table.rt td.down{color:var(--down)}
 tr.port td{background:var(--surface-2)}
 tr.port td:first-child{padding-left:8px;border-radius:6px 0 0 6px} tr.port td:last-child{border-radius:0 6px 6px 0}
@@ -177,6 +177,14 @@ table.heat td{text-align:center;padding:0;height:30px;min-width:30px;border:0;bo
 .seg{display:inline-flex;padding:3px;background:var(--surface-2);border-radius:9px;gap:2px}
 .seg button{border:0;background:transparent;padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.ptrack{position:relative;height:14px;border-radius:7px;background:var(--surface-2);margin:22px 0 10px}
+.pfill{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:color-mix(in srgb,var(--ink) 22%,var(--surface-2))}
+.pmark{position:absolute;top:-6px;width:4px;height:26px;margin-left:-2px;border-radius:2px}
+.ptargets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
+.ptargets div{display:flex;flex-direction:column;gap:2px}
+.ptargets span{font-size:12.5px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
+.ptargets span i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.ptargets b{font-size:18px;font-variant-numeric:tabular-nums} .ptargets em{font-style:normal;font-size:12px;color:var(--muted)}
 .note{font-size:12.5px;color:var(--muted);margin-top:24px;line-height:1.7}
 .tip{position:fixed;pointer-events:none;z-index:10;max-width:86vw;background:var(--ink);color:var(--surface);font-size:12.5px;padding:7px 10px;border-radius:8px;white-space:normal;opacity:0;transition:opacity .1s;transform:translate(-50%,calc(-100% - 10px))}
 .tip.on{opacity:1}
@@ -192,7 +200,8 @@ table.heat td{text-align:center;padding:0;height:30px;min-width:30px;border:0;bo
   .tbl-wrap{margin:0 -16px;padding:0 16px}
   .br{grid-template-columns:76px 1fr 92px;gap:8px}
   .tab{padding:8px 6px;display:flex;flex-direction:column;align-items:center;line-height:1.3}
-  .tabs{display:grid;grid-template-columns:repeat(3,1fr);width:100%}
+  .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));grid-auto-flow:column;width:100%}
+  .kpi .v{font-size:19px}
   .tab .t{margin-left:0;font-size:12px}
 }
 </style>
@@ -339,6 +348,7 @@ function balanceChart(id, loans) {
 function drawCharts() {
   document.querySelectorAll('[data-chart]').forEach(el => {
     const C = CHARTS[el.dataset.chart]; if (!C) return;
+    if (C.type === 'plan') { drawPlan(el, C); return; }
     const W = Math.max(280, el.clientWidth), H = 220, pl = 64, pr = 12, pt = 12, pb = 26;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const series = C.loans.map((l, k) => ({ name: l.name, color: `var(--s${k + 1})`,
@@ -364,7 +374,7 @@ function drawCharts() {
 let rzT; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(drawCharts, 150); });
 function chartHover(e) {
   const el = e.target.closest('[data-chart]'); if (!el) return false;
-  const C = CHARTS[el.dataset.chart], svg = el.querySelector('svg'); if (!C || !svg || !C.series) return false; const r = svg.getBoundingClientRect();
+  const C = CHARTS[el.dataset.chart], svg = el.querySelector('svg'); if (C && svg && C.type === 'plan') return planHover(e, el, C); if (!C || !svg || !C.series) return false; const r = svg.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * C.W;
   if (x < C.pl || x > C.W - C.pr) { hideHover(el); return false; }
   const t = C.t0 + (x - C.pl) / (C.W - C.pl - C.pr) * (C.t1 - C.t0);
@@ -674,7 +684,7 @@ function renderStock(M) {
   <div class="kpis" style="margin-bottom:14px">
     <div class="card kpi"><div class="label">주식 평가액</div><div class="v num">${short(M.stockTotal)}</div><div class="s">예수금 ${short(M.deposit)} 별도</div></div>
     <div class="card kpi"><div class="label">평가손익</div><div class="v num">${pnlKpi}</div><div class="s">${M.pnlH.length ? '수익률 ' + spct(M.pnl / (M.stockTotal - M.pnl), 1) : ''}</div></div>
-    <div class="card kpi"><div class="label">변동성 (연환산)</div><div class="v num">${P ? pct(P.vol) : '-'}</div><div class="s">${P ? '1년 최대 낙폭 ' + pct(P.mdd) : '일별 시세 대기'}</div></div>
+    <div class="card kpi"><div class="label">최근 거래일 변동</div><div class="v num">${M.day == null ? '-' : `<span class="${cls(M.day)}">${signed(M.day)}</span>`}</div><div class="s">${P?.ret?.y1 != null ? '1년 수익률 ' + spct(P.ret.y1, 1) : ''}</div></div>
     <div class="card kpi"><div class="label">USD/KRW</div><div class="v num">${fx ? nf.format(fx.toFixed(2)) : '-'}</div><div class="s"><span class="${cls(fx - fxPrev())}">${fx && fxPrev() ? spct(fx / fxPrev() - 1) : ''}</span>${M.dayFx == null ? '' : ` · 오늘 환율 효과 <span class="${cls(M.dayFx)}">${signed(M.dayFx)}</span>`}</div></div>
   </div>
 
@@ -700,23 +710,6 @@ function renderStock(M) {
     ${A.hasHist ? `<div class="tbl-wrap"><table class="rt"><thead><tr><th>종목</th><th>1주</th><th>1개월</th><th>3개월</th><th>연초 대비</th><th>1년</th></tr></thead><tbody>${retRows}</tbody></table></div>` : noHist}
   </div>
 
-  <div class="sechead">리스크 분석</div>
-  <div class="card"><h2>변동성 · 낙폭 · 52주 위치</h2><p class="h2sub">최근 1년 일별 시세 기준 · 변동성 = 일간 수익률 표준편차 × √252 · 막대는 52주 최저(왼쪽)~최고(오른쪽) 중 현재 위치</p>
-    ${A.hasHist ? `<div class="tbl-wrap"><table class="rt"><thead><tr><th>종목</th><th>변동성</th><th>최대 낙폭</th><th>현재 낙폭</th><th style="min-width:130px">52주 범위</th></tr></thead><tbody>${riskRows}</tbody></table></div>` : noHist}
-  </div>
-  <div class="two" style="margin-top:14px">
-    <div class="card"><h2>일간 수익률 분포</h2><p class="h2sub">포트폴리오(원화 환산) 최근 1년 ${P ? P.n + '거래일' : ''} · 진한 막대 = 하위 5% 구간</p>
-      ${P ? `${histogram(P.rets, P.mean, P.var95)}
-      <div class="stats">
-        <div><span>평균</span><b class="${cls(P.mean)}">${spct(P.mean)}</b></div>
-        <div><span>표준편차</span><b>${pct(P.sd, 2)}</b></div>
-        <div><span>VaR 95% (1일)</span><b class="down">${pct(P.var95, 2)}</b><em>${P.var95 != null ? '≈ ' + short(P.var95 * M.stockTotal) : ''}</em></div>
-        <div><span>최고 / 최저일</span><b><span class="up">${spct(P.best, 1)}</span> / <span class="down">${spct(P.worst, 1)}</span></b></div>
-      </div>` : noHist}</div>
-    <div class="card"><h2>상관관계</h2><p class="h2sub">주간 수익률 상관계수 (−1 ~ +1) · 빨강 = 같이 움직임, 파랑 = 반대로 움직임</p>
-      ${P ? heat(P.corr) : noHist}</div>
-  </div>
-
   <div class="sechead">포트폴리오 구조</div>
   <div class="two">
     <div class="card"><h2>집중도 · 실질 노출</h2><p class="h2sub">같은 지수·종목을 여러 계좌에 나눠 담은 것을 합산 (테슬라채권혼합은 테슬라 30% · 채권 70%로 가정)</p>
@@ -737,6 +730,119 @@ function renderStock(M) {
       <div class="legend">${accts.map(a => `<div class="row"><span class="sw" style="background:${a.color}"></span><span>${esc(a.name)} <span style="color:var(--muted);font-size:12.5px">${a.n}종목</span></span><span class="num" style="font-weight:600">${short(a.value)}</span><span class="pct num">${pct(a.value / M.stockTotal)}</span></div>`).join('')}</div>
     </div>
   </div>`;
+}
+
+/* ---------- 투자 계획 ---------- */
+function planModel(M) {
+  const P = asset.plan; if (!P || !P.actual || !P.actual.length) return null;
+  const act = P.actual.slice().sort((a, b) => a.year - b.year);
+  act.forEach((a, i) => { const prev = i ? act[i - 1].end : 0; a.start = prev; a.flow = a.profit != null ? a.end - prev - a.profit : null; });
+  const rets = act.map(a => a.ret).filter(r => r != null);
+  const arith = rets.length ? rets.reduce((s, r) => s + r, 0) / rets.length : null;
+  const geo = rets.length ? Math.exp(rets.reduce((s, r) => s + Math.log(1 + r), 0) / rets.length) - 1 : null;
+  const last = act[act.length - 1];
+  const deps = {}; (P.future || []).forEach(f => deps[f.year] = f.deposit || 0);
+  const years = (P.future || []).map(f => f.year).filter(y => y > last.year).sort((a, b) => a - b);
+  const scen = [
+    { key: 'arith', name: '단순 평균', r: arith, color: 'var(--s1)' },
+    { key: 'geo', name: '기하평균', r: geo, color: 'var(--s2)' },
+    { key: 'cons', name: '보수적', r: P.conservative, color: 'var(--s3)' },
+  ].filter(s => s.r != null);
+  scen.forEach(s => { let F = last.end; s.path = years.map(y => { const st = F; F = F + (deps[y] || 0) + F * s.r; return { year: y, start: st, dep: deps[y] || 0, end: F }; }); });
+  const thisYear = new Date().getFullYear();
+  const current = M.tabs['주식'].asset;          // 주식 전체 계좌 + 예수금 (실시간)
+  return { act, arith, geo, cons: P.conservative, last, years, scen, deps, thisYear, current,
+    cumProfit: act.reduce((s, a) => s + (a.profit || 0), 0) };
+}
+
+function renderPlan(M) {
+  const L = planModel(M);
+  if (!L) return '<div class="card"><p class="empty">엑셀 "투자계획" 시트에 실적이 없습니다.</p></div>';
+  const inYear = L.thisYear === L.last.year + 1;
+  const dep = L.deps[L.thisYear] || 0;
+  const targets = L.scen.map(s => ({ ...s, target: L.last.end + dep + L.last.end * s.r }));
+  const maxT = Math.max(L.current, ...targets.map(t => t.target));
+  const X = v => Math.max(0, Math.min(100, (v - L.last.end) / (maxT - L.last.end || 1) * 100));
+  const gain = L.current - L.last.end;
+  const finalY = L.years[L.years.length - 1];
+  CHARTS.plan = { type: 'plan', L };
+  const retItems = L.act.filter(a => a.ret != null).map(a => ({ label: a.year + '년', v: a.ret })).reverse();
+  return `
+  <div class="kpis" style="margin-bottom:14px">
+    <div class="card kpi"><div class="label">누적 이익 (${L.act[0].year}~${L.last.year})</div><div class="v num ${cls(L.cumProfit)}">${signed(L.cumProfit)}</div><div class="s">${L.last.year}년 말 잔액 ${short(L.last.end)}</div></div>
+    <div class="card kpi"><div class="label">기하평균 수익률 (CAGR)</div><div class="v num">${pct(L.geo, 2)}</div><div class="s">${L.act.length}년 복리 기준</div></div>
+    <div class="card kpi"><div class="label">단순 평균 수익률</div><div class="v num">${pct(L.arith, 2)}</div><div class="s">연 수익률의 산술평균</div></div>
+    <div class="card kpi"><div class="label">${finalY}년 말 예상</div><div class="v num">${short(L.scen.find(s => s.key === 'geo')?.path.at(-1)?.end ?? 0)}</div><div class="s">기하평균 시나리오</div></div>
+  </div>
+
+  ${inYear ? `<div class="card" style="margin-bottom:14px">
+    <div class="h2row"><h2>${L.thisYear}년 진행 상황</h2><span class="pill">주식 전체 계좌 · 실시간</span></div>
+    <p class="h2sub">연초 ${short(L.last.end)} → 현재 ${short(L.current)} (${signed(gain)}, ${spct(gain / L.last.end, 1)} · 올해 납입분 포함)</p>
+    <div class="ptrack">
+      <div class="pfill" style="width:${X(L.current)}%"></div>
+      ${targets.map(t => `<i class="pmark" style="left:${X(t.target)}%;background:${t.color}" data-tip="${esc(t.name)} 목표 ${short(t.target)} (연 ${pct(t.r, 1)})"></i>`).join('')}
+    </div>
+    <div class="ptargets">${targets.map(t => `<div><span><i style="background:${t.color}"></i>${esc(t.name)} ${pct(t.r, 1)}</span><b>${short(t.target)}</b><em>${gain > 0 ? pct(gain / (t.target - L.last.end), 0) + ' 달성' : '연초 미만'} · 남은 ${short(Math.max(0, t.target - L.current))}</em></div>`).join('')}</div>
+  </div>` : ''}
+
+  <div class="card" style="margin-bottom:14px">
+    <h2>자산 성장 추이와 예상</h2>
+    <p class="h2sub">막대 = 연말 실적${inYear ? ' (올해는 현재 실시간 값)' : ''} · 선 = ${L.last.year}년 말부터 계획 납입금 + 시나리오 수익률로 계산한 연말 예상</p>
+    <div class="lchart" data-chart="plan"></div>
+    <div class="keys"><span><i style="width:12px;height:10px;background:var(--bar);border-radius:2px"></i>실적</span>${L.scen.map(s => `<span><i style="width:14px;height:2px;background:${s.color}"></i>${esc(s.name)} ${pct(s.r, 1)}</span>`).join('')}</div>
+  </div>
+
+  <div class="two">
+    <div class="card"><h2>연도별 수익률</h2><p class="h2sub">단순 평균 ${pct(L.arith, 1)} · 기하평균 ${pct(L.geo, 1)} — 손실 해가 있으면 단순 평균이 실제 복리보다 높게 나옵니다</p>
+      ${divBars(retItems, v => spct(v, 1))}</div>
+    <div class="card"><h2>실적</h2><p class="h2sub">순입출금 = 연말 − 전년 말 − 이익 (입금 +, 출금 −)</p>
+      <div class="tbl-wrap"><table class="rt compact"><thead><tr><th>연도</th><th>순입출금</th><th>이익</th><th>연말 잔액</th><th>수익률</th></tr></thead><tbody>
+      ${L.act.slice().reverse().map(a => `<tr><td><b>${a.year}</b></td><td class="${cls(a.flow)}">${a.flow == null ? '-' : signed(a.flow)}</td><td class="${cls(a.profit)}">${a.profit == null ? '-' : signed(a.profit)}</td><td>${short(a.end)}</td><td class="${cls(a.ret)}">${spct(a.ret, 1)}</td></tr>`).join('')}
+      </tbody></table></div></div>
+  </div>
+
+  <div class="card" style="margin-top:14px"><h2>연도별 예상 (연말 잔액)</h2><p class="h2sub">연말 = 연초 + 납입금 + 연초 × 수익률 (납입금은 그해 수익 미반영)</p>
+    <div class="tbl-wrap"><table class="rt"><thead><tr><th>연도</th><th>납입금</th>${L.scen.map(s => `<th><span style="color:${s.color}">●</span> ${esc(s.name)} ${pct(s.r, 1)}</th>`).join('')}</tr></thead><tbody>
+    ${L.years.map((y, i) => `<tr><td><b>${y}</b></td><td>${short(L.deps[y] || 0)}</td>${L.scen.map(s => `<td>${short(s.path[i].end)}</td>`).join('')}</tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+
+function drawPlan(el, C) {
+  const L = C.L, W = Math.max(280, el.clientWidth), H = 280, pl = 58, pr = 12, pt = 12, pb = 26;
+  const yrs = []; for (let y = L.act[0].year; y <= (L.years.at(-1) || L.last.year); y++) yrs.push(y);
+  const inYear = L.thisYear === L.last.year + 1;
+  const vmax = Math.max(...L.act.map(a => a.end), ...L.scen.flatMap(s => s.path.map(p => p.end)), inYear ? L.current : 0) * 1.05 || 1;
+  const bw = (W - pl - pr) / yrs.length, X = y => pl + (y - yrs[0] + 0.5) * bw, Y = v => pt + (1 - v / vmax) * (H - pt - pb);
+  const step = Math.pow(10, Math.floor(Math.log10(vmax / 4))), nice = [1, 2, 5, 10].map(m => m * step).find(x => vmax / x <= 5);
+  let g = '';
+  for (let v = nice; v <= vmax; v += nice) g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${pl - 8}" y="${Y(v) + 4}" text-anchor="end" class="ax">${masked ? '' : short(v)}</text>`;
+  const every = Math.max(1, Math.ceil(yrs.length / Math.floor((W - pl) / 44)));
+  yrs.forEach((y, i) => { if (i % every === 0) g += `<text x="${X(y)}" y="${H - 6}" text-anchor="middle" class="ax">${String(y).slice(2)}</text>`; });
+  const bwid = Math.max(3, Math.min(28, bw * 0.6));
+  const bars = L.act.map(a => `<rect x="${X(a.year) - bwid / 2}" y="${Y(a.end)}" width="${bwid}" height="${Y(0) - Y(a.end)}" rx="3" fill="var(--bar)"/>`).join('') +
+    (inYear ? `<rect x="${X(L.thisYear) - bwid / 2}" y="${Y(L.current)}" width="${bwid}" height="${Y(0) - Y(L.current)}" rx="3" fill="var(--bar)" opacity=".45" stroke="var(--ink-2)" stroke-dasharray="3 2"/>` : '');
+  const lines = L.scen.map(s => `<path d="M${X(L.last.year)} ${Y(L.last.end)}${s.path.map(p => `L${X(p.year).toFixed(1)} ${Y(p.end).toFixed(1)}`).join('')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round"/>`).join('');
+  Object.assign(C, { W, pl, pr, yrs, X, Y, bw });
+  el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="자산 성장 추이와 예상">
+    ${g}<line x1="${pl}" x2="${W - pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--axis)"/>${bars}${lines}
+    <line class="xh" y1="${pt}" y2="${H - pb}" stroke="var(--muted)" stroke-dasharray="3 3" style="display:none"/>
+    <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg>`;
+}
+function planHover(e, el, C) {
+  const svg = el.querySelector('svg'), r = svg.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * C.W;
+  const i = Math.floor((x - C.pl) / C.bw); const y = C.yrs[i];
+  if (y == null) { hideHover(el); return false; }
+  const L = C.L, xh = svg.querySelector('.xh'); xh.setAttribute('x1', C.X(y)); xh.setAttribute('x2', C.X(y)); xh.style.display = '';
+  const a = L.act.find(v => v.year === y);
+  let txt = `${y}년 · `;
+  if (a) txt += `연말 ${short(a.end)}${a.ret != null ? ' (' + spct(a.ret, 1) + ')' : ''}`;
+  else {
+    if (y === L.thisYear && L.thisYear === L.last.year + 1) txt += `현재 ${short(L.current)} · `;
+    txt += L.scen.map(s => { const p = s.path.find(q => q.year === y); return p ? `${s.name} ${short(p.end)}` : ''; }).filter(Boolean).join(' · ');
+  }
+  tip.textContent = txt; tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.add('on');
+  return true;
 }
 
 function renderRealEstate(M) {
@@ -825,8 +931,8 @@ function render() {
   const tabBtns = ['주식', '부동산', '기타'].map(k => {
     const t = M.tabs[k];
     return `<button class="tab" role="tab" aria-selected="${k === activeTab}" data-tab="${k}">${k}<span class="t num">${short(t.asset - t.debt)}</span></button>`;
-  }).join('');
-  const body = activeTab === '부동산' ? renderRealEstate(M) : activeTab === '기타' ? renderOther(M) : renderStock(M);
+  }).join('') + (asset.plan?.actual?.length ? `<button class="tab" role="tab" aria-selected="${activeTab === '계획'}" data-tab="계획">투자 계획</button>` : '');
+  const body = activeTab === '부동산' ? renderRealEstate(M) : activeTab === '기타' ? renderOther(M) : activeTab === '계획' && asset.plan?.actual?.length ? renderPlan(M) : renderStock(M);
   document.getElementById('app').innerHTML = renderSummary(M) +
     `<nav class="tabs" role="tablist">${tabBtns}</nav><section class="panel" role="tabpanel">${body}</section>`;
   drawCharts();
