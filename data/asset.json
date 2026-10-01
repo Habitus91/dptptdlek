@@ -1,0 +1,211 @@
+{
+    "baseDate":  "2026-10-01",
+    "fxManual":  1360,
+    "exportedAt":  "2026-10-01T10:39:24",
+    "holdings":  [
+                     {
+                         "account":  "해외주식 계좌",
+                         "name":  "TSLA",
+                         "ticker":  "TSLA",
+                         "currency":  "USD",
+                         "qty":  230,
+                         "avgPrice":  198.5837,
+                         "position":  "유지",
+                         "targetGroup":  "TSLA"
+                     },
+                     {
+                         "account":  "해외주식 계좌",
+                         "name":  "QQQ",
+                         "ticker":  "QQQ",
+                         "currency":  "USD",
+                         "qty":  104,
+                         "avgPrice":  363.4026,
+                         "position":  "매수",
+                         "targetGroup":  "QQQ"
+                     },
+                     {
+                         "account":  "해외주식 계좌",
+                         "name":  "BRK.B",
+                         "ticker":  "BRK-B",
+                         "currency":  "USD",
+                         "qty":  92,
+                         "avgPrice":  235.6785,
+                         "position":  "유지",
+                         "targetGroup":  "BRK.B"
+                     },
+                     {
+                         "account":  "해외주식 계좌",
+                         "name":  "AAPL",
+                         "ticker":  "AAPL",
+                         "currency":  "USD",
+                         "qty":  50,
+                         "avgPrice":  106.0286,
+                         "position":  "매도",
+                         "targetGroup":  "AAPL"
+                     },
+                     {
+                         "account":  "해외주식 계좌",
+                         "name":  "PLTR",
+                         "ticker":  "PLTR",
+                         "currency":  "USD",
+                         "qty":  88,
+                         "avgPrice":  126.7026,
+                         "position":  "유지",
+                         "targetGroup":  "PLTR"
+                     },
+                     {
+                         "account":  "해외주식 계좌",
+                         "name":  "GOOGL",
+                         "ticker":  "GOOGL",
+                         "currency":  "USD",
+                         "qty":  30,
+                         "avgPrice":  111.9718,
+                         "position":  "매도",
+                         "targetGroup":  "GOOGL"
+                     },
+                     {
+                         "account":  "개인연금",
+                         "name":  "TIGER 미국 나스닥 100",
+                         "ticker":  "133690.KS",
+                         "currency":  "KRW",
+                         "qty":  100,
+                         "avgPrice":  123663,
+                         "position":  "유지",
+                         "targetGroup":  "연금·DC·IRP"
+                     },
+                     {
+                         "account":  "개인연금",
+                         "name":  "TIGER 미국 S\u0026P 500",
+                         "ticker":  "360750.KS",
+                         "currency":  "KRW",
+                         "qty":  300,
+                         "avgPrice":  19140,
+                         "position":  "유지",
+                         "targetGroup":  "연금·DC·IRP"
+                     },
+                     {
+                         "account":  "퇴직연금(DC)",
+                         "name":  "TIGER 미국 나스닥 100",
+                         "ticker":  "133690.KS",
+                         "currency":  "KRW",
+                         "qty":  50,
+                         "avgPrice":  163511,
+                         "position":  "유지",
+                         "targetGroup":  "연금·DC·IRP"
+                     },
+                     {
+                         "account":  "퇴직연금(DC)",
+                         "name":  "TIGER 테슬라채권혼합(Fn)",
+                         "ticker":  "447770.KS",
+                         "currency":  "KRW",
+                         "qty":  275,
+                         "avgPrice":  14514,
+                         "position":  "유지",
+                         "targetGroup":  "연금·DC·IRP"
+                     },
+                     {
+                         "account":  "퇴직연금(DC)",
+                         "name":  "TIGER 미국 S\u0026P 500",
+                         "ticker":  "360750.KS",
+                         "currency":  "KRW",
+                         "qty":  49,
+                         "avgPrice":  24914,
+                         "position":  "유지",
+                         "targetGroup":  "연금·DC·IRP"
+                     },
+                     {
+                         "account":  "개인퇴직(IRP)",
+                         "name":  "TIGER 미국 S\u0026P 500",
+                         "ticker":  "360750.KS",
+                         "currency":  "KRW",
+                         "qty":  44,
+                         "avgPrice":  13406,
+                         "position":  "유지",
+                         "targetGroup":  "연금·DC·IRP"
+                     }
+                 ],
+    "targets":  [
+                    {
+                        "group":  "TSLA",
+                        "target":  0.3
+                    },
+                    {
+                        "group":  "QQQ",
+                        "target":  0.35
+                    },
+                    {
+                        "group":  "BRK.B",
+                        "target":  0.2
+                    },
+                    {
+                        "group":  "AAPL",
+                        "target":  0
+                    },
+                    {
+                        "group":  "PLTR",
+                        "target":  0.05
+                    },
+                    {
+                        "group":  "GOOGL",
+                        "target":  0
+                    },
+                    {
+                        "group":  "연금·DC·IRP",
+                        "target":  0.1
+                    }
+                ],
+    "assets":  [
+                   {
+                       "group":  "부동산",
+                       "name":  "아파트",
+                       "value":  400000000
+                   },
+                   {
+                       "group":  "자동차",
+                       "name":  "차량 1",
+                       "value":  7950000
+                   },
+                   {
+                       "group":  "자동차",
+                       "name":  "차량 2",
+                       "value":  50040000
+                   },
+                   {
+                       "group":  "현금성",
+                       "name":  "입출금 계좌",
+                       "value":  0
+                   },
+                   {
+                       "group":  "현금성",
+                       "name":  "현금",
+                       "value":  200000
+                   },
+                   {
+                       "group":  "예수금",
+                       "name":  "주식 예수금",
+                       "value":  292376
+                   }
+               ],
+    "debts":  [
+                  {
+                      "name":  "주택담보대출 A",
+                      "tab":  "부동산",
+                      "value":  217335181
+                  },
+                  {
+                      "name":  "주택담보대출 B",
+                      "tab":  "부동산",
+                      "value":  54933412
+                  },
+                  {
+                      "name":  "마이너스통장",
+                      "tab":  "기타",
+                      "value":  7408668
+                  },
+                  {
+                      "name":  "카드할부",
+                      "tab":  "기타",
+                      "value":  24809452
+                  }
+              ]
+}
