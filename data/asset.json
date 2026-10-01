@@ -1,7 +1,7 @@
 {
     "baseDate":  "2026-10-01",
     "fxManual":  1360,
-    "exportedAt":  "2026-10-01T11:29:48",
+    "exportedAt":  "2026-10-01T11:47:58",
     "holdings":  [
                      {
                          "account":  "해외주식 계좌",
@@ -9,9 +9,7 @@
                          "ticker":  "TSLA",
                          "currency":  "USD",
                          "qty":  230,
-                         "avgPrice":  198.5837,
-                         "position":  "유지",
-                         "targetGroup":  "TSLA"
+                         "avgPrice":  198.5837
                      },
                      {
                          "account":  "해외주식 계좌",
@@ -19,9 +17,7 @@
                          "ticker":  "QQQ",
                          "currency":  "USD",
                          "qty":  104,
-                         "avgPrice":  363.4026,
-                         "position":  "매수",
-                         "targetGroup":  "QQQ"
+                         "avgPrice":  363.4026
                      },
                      {
                          "account":  "해외주식 계좌",
@@ -29,9 +25,7 @@
                          "ticker":  "BRK-B",
                          "currency":  "USD",
                          "qty":  92,
-                         "avgPrice":  235.6785,
-                         "position":  "유지",
-                         "targetGroup":  "BRK.B"
+                         "avgPrice":  235.6785
                      },
                      {
                          "account":  "해외주식 계좌",
@@ -39,9 +33,7 @@
                          "ticker":  "AAPL",
                          "currency":  "USD",
                          "qty":  50,
-                         "avgPrice":  106.0286,
-                         "position":  "매도",
-                         "targetGroup":  "AAPL"
+                         "avgPrice":  106.0286
                      },
                      {
                          "account":  "해외주식 계좌",
@@ -49,9 +41,7 @@
                          "ticker":  "PLTR",
                          "currency":  "USD",
                          "qty":  88,
-                         "avgPrice":  126.7026,
-                         "position":  "유지",
-                         "targetGroup":  "PLTR"
+                         "avgPrice":  126.7026
                      },
                      {
                          "account":  "해외주식 계좌",
@@ -59,9 +49,7 @@
                          "ticker":  "GOOGL",
                          "currency":  "USD",
                          "qty":  30,
-                         "avgPrice":  111.9718,
-                         "position":  "매도",
-                         "targetGroup":  "GOOGL"
+                         "avgPrice":  111.9718
                      },
                      {
                          "account":  "개인연금",
@@ -69,9 +57,7 @@
                          "ticker":  "133690.KS",
                          "currency":  "KRW",
                          "qty":  100,
-                         "avgPrice":  123663,
-                         "position":  "유지",
-                         "targetGroup":  "연금·DC·IRP"
+                         "avgPrice":  123663
                      },
                      {
                          "account":  "개인연금",
@@ -79,9 +65,7 @@
                          "ticker":  "360750.KS",
                          "currency":  "KRW",
                          "qty":  300,
-                         "avgPrice":  19140,
-                         "position":  "유지",
-                         "targetGroup":  "연금·DC·IRP"
+                         "avgPrice":  19140
                      },
                      {
                          "account":  "퇴직연금(DC)",
@@ -89,9 +73,7 @@
                          "ticker":  "133690.KS",
                          "currency":  "KRW",
                          "qty":  50,
-                         "avgPrice":  163511,
-                         "position":  "유지",
-                         "targetGroup":  "연금·DC·IRP"
+                         "avgPrice":  163511
                      },
                      {
                          "account":  "퇴직연금(DC)",
@@ -99,9 +81,7 @@
                          "ticker":  "447770.KS",
                          "currency":  "KRW",
                          "qty":  275,
-                         "avgPrice":  14514,
-                         "position":  "유지",
-                         "targetGroup":  "연금·DC·IRP"
+                         "avgPrice":  14514
                      },
                      {
                          "account":  "퇴직연금(DC)",
@@ -109,9 +89,7 @@
                          "ticker":  "360750.KS",
                          "currency":  "KRW",
                          "qty":  49,
-                         "avgPrice":  24914,
-                         "position":  "유지",
-                         "targetGroup":  "연금·DC·IRP"
+                         "avgPrice":  24914
                      },
                      {
                          "account":  "개인퇴직(IRP)",
@@ -119,41 +97,9 @@
                          "ticker":  "360750.KS",
                          "currency":  "KRW",
                          "qty":  44,
-                         "avgPrice":  13406,
-                         "position":  "유지",
-                         "targetGroup":  "연금·DC·IRP"
+                         "avgPrice":  13406
                      }
                  ],
-    "targets":  [
-                    {
-                        "group":  "TSLA",
-                        "target":  0.3
-                    },
-                    {
-                        "group":  "QQQ",
-                        "target":  0.35
-                    },
-                    {
-                        "group":  "BRK.B",
-                        "target":  0.2
-                    },
-                    {
-                        "group":  "AAPL",
-                        "target":  0
-                    },
-                    {
-                        "group":  "PLTR",
-                        "target":  0.05
-                    },
-                    {
-                        "group":  "GOOGL",
-                        "target":  0
-                    },
-                    {
-                        "group":  "연금·DC·IRP",
-                        "target":  0.1
-                    }
-                ],
     "assets":  [
                    {
                        "group":  "부동산",
@@ -216,7 +162,7 @@
                   {
                       "name":  "마이너스통장",
                       "tab":  "기타",
-                      "value":  7408668
+                      "value":  7469173
                   },
                   {
                       "name":  "카드할부",

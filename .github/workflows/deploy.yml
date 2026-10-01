@@ -29,11 +29,23 @@ jobs:
           python-version: '3.12'
       - name: 주식 시세·환율 받아오기
         run: python scripts/fetch_prices.py
+      - name: 날짜
+        id: day
+        run: echo "d=$(TZ=Asia/Seoul date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+      - name: 1년 일별 시세 캐시 (하루 1회만 새로 받음)
+        uses: actions/cache@v4
+        with:
+          path: data/history.json
+          key: hist-${{ steps.day.outputs.d }}-${{ hashFiles('data/asset.json') }}
+          restore-keys: hist-
+      - name: 1년 일별 시세 받아오기
+        run: python scripts/fetch_history.py
       - name: 배포 파일 준비
         run: |
           mkdir -p _site/data
           cp index.html _site/
           cp data/asset.json data/prices.json _site/data/
+          if [ -f data/history.json ]; then cp data/history.json _site/data/; fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
