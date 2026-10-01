@@ -1,5 +1,5 @@
 """GitHub Actions에서 실행: 보유 종목 + USD/KRW 의 최근 1년 일별 종가 → data/history.json
-+ S&P500 비교용 SPY·USD/KRW 월말 가격(10년, 배당 반영) → bench
++ 시장 지수 비교용 SPY·QQQ·USD/KRW 월말 가격(10년, 배당 반영) → bench
 하루에 한 번만 새로 받는다(이미 오늘 받은 파일이 있고 종목이 같으면 건너뜀)."""
 import json, os, time, datetime, urllib.request
 
@@ -14,7 +14,7 @@ if os.path.exists('data/history.json'):
         old = json.load(open('data/history.json', encoding='utf8'))
     except Exception:
         old = {}
-if old.get('date') == today and all(t in old.get('series', {}) for t in tickers) and old.get('bench', {}).get('spy'):
+if old.get('date') == today and all(t in old.get('series', {}) for t in tickers) and old.get('bench', {}).get('spy') and old.get('bench', {}).get('qqq'):
     print('오늘 받은 일별 시세가 있어 건너뜁니다.'); raise SystemExit(0)
 
 def history(sym, rng='1y', itv='1d'):
@@ -50,7 +50,7 @@ for t in tickers:
     time.sleep(0.3)
 
 bench = {}
-for key, sym in (('spy', 'SPY'), ('fx', 'KRW=X')):
+for key, sym in (('spy', 'SPY'), ('qqq', 'QQQ'), ('fx', 'KRW=X')):
     h = history(sym, '10y', '1mo')
     if h and len(h['d']) > 24:
         bench[key] = h
@@ -60,4 +60,4 @@ for key, sym in (('spy', 'SPY'), ('fx', 'KRW=X')):
 
 os.makedirs('data', exist_ok=True)
 json.dump({'date': today, 'series': series, 'bench': bench}, open('data/history.json', 'w', encoding='utf8'), separators=(',', ':'))
-print(f'일별 시세 {len(series)}/{len(tickers)}개, S&P500 비교 데이터 {"OK" if bench.get("spy") and bench.get("fx") else "없음"} 저장')
+print(f'일별 시세 {len(series)}/{len(tickers)}개, 지수 비교 데이터 {", ".join(k for k in ("spy", "qqq", "fx") if bench.get(k)) or "없음"} 저장')

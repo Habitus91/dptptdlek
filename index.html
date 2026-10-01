@@ -238,8 +238,8 @@ const PRICE_REFRESH_MS = 5 * 60 * 1000;
 const TAB_COLOR = { '주식': 'var(--s1)', '부동산': 'var(--s2)', '기타': 'var(--s3)' };
 const ACCT_COLOR = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 
-let asset = null, prices = null, masked = false, activeTab = '주식', hView = 'ticker';
-try { masked = localStorage.getItem('pland-mask') === '1'; activeTab = localStorage.getItem('pland-tab') || '주식'; hView = localStorage.getItem('pland-hview') || 'ticker'; } catch (e) {}
+let asset = null, prices = null, masked = false, activeTab = '주식', hView = 'ticker', benchSel = 'spy', planLog = false;
+try { masked = localStorage.getItem('pland-mask') === '1'; activeTab = localStorage.getItem('pland-tab') || '주식'; hView = localStorage.getItem('pland-hview') || 'ticker'; benchSel = localStorage.getItem('pland-bench') || 'spy'; planLog = localStorage.getItem('pland-log') === '1'; } catch (e) {}
 
 /* ---------- format ---------- */
 const nf = new Intl.NumberFormat('ko-KR');
@@ -787,8 +787,9 @@ function renderPlan(M) {
   </div>` : ''}
 
   <div class="card" style="margin-bottom:14px">
-    <h2>자산 성장 추이와 예상</h2>
-    <p class="h2sub">막대 = 연말 실적${inYear ? ' (올해는 현재 실시간 값)' : ''} · 선 = ${L.last.year}년 말부터 계획 납입금 + 시나리오 수익률로 계산한 연말 예상</p>
+    <div class="h2row"><h2>자산 성장 추이와 예상</h2>
+      <div class="seg" role="group" aria-label="세로축"><button data-plog="lin" aria-pressed="${!planLog}">일반</button><button data-plog="log" aria-pressed="${planLog}">로그</button></div></div>
+    <p class="h2sub">${planLog ? '로그 축: 같은 높이 = 같은 배율 (×2, ×10) · ' : ''}막대 = 연말 실적${inYear ? ' (올해는 현재 실시간 값)' : ''} · 선 = ${L.last.year}년 말부터 계획 납입금 + 시나리오 수익률로 계산한 연말 예상</p>
     <div class="lchart" data-chart="plan"></div>
     <div class="keys"><span><i style="width:12px;height:10px;background:var(--bar);border-radius:2px"></i>실적</span>${L.scen.map(s => `<span><i style="width:14px;height:2px;background:${s.color}"></i>${esc(s.name)} ${pct(s.r, 1)}</span>`).join('')}</div>
   </div>
@@ -814,20 +815,28 @@ function drawPlan(el, C) {
   const L = C.L, W = Math.max(280, el.clientWidth), H = 280, pl = 58, pr = 12, pt = 12, pb = 26;
   const yrs = []; for (let y = L.act[0].year; y <= (L.years.at(-1) || L.last.year); y++) yrs.push(y);
   const inYear = L.thisYear === L.last.year + 1;
-  const vmax = Math.max(...L.act.map(a => a.end), ...L.scen.flatMap(s => s.path.map(p => p.end)), inYear ? L.current : 0) * 1.05 || 1;
-  const bw = (W - pl - pr) / yrs.length, X = y => pl + (y - yrs[0] + 0.5) * bw, Y = v => pt + (1 - v / vmax) * (H - pt - pb);
-  const step = Math.pow(10, Math.floor(Math.log10(vmax / 4))), nice = [1, 2, 5, 10].map(m => m * step).find(x => vmax / x <= 5);
-  let g = '';
-  for (let v = nice; v <= vmax; v += nice) g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${pl - 8}" y="${Y(v) + 4}" text-anchor="end" class="ax">${masked ? '' : short(v)}</text>`;
+  const allV = [...L.act.map(a => a.end), ...L.scen.flatMap(s => s.path.map(p => p.end)), inYear ? L.current : 0].filter(v => v > 0);
+  const bw = (W - pl - pr) / yrs.length, X = y => pl + (y - yrs[0] + 0.5) * bw, base = H - pb;
+  let Y, g = '';
+  if (planLog) {
+    const lo = Math.min(...allV) * 0.6, hi = Math.max(...allV) * 1.4, l0 = Math.log10(lo), l1 = Math.log10(hi);
+    Y = v => pt + (l1 - Math.log10(Math.max(v, lo))) / (l1 - l0) * (base - pt);
+    for (let e = Math.floor(l0); e <= Math.ceil(l1); e++) [1, 2, 5].forEach(m => { const v = m * 10 ** e; if (v >= lo && v <= hi) g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${pl - 8}" y="${Y(v) + 4}" text-anchor="end" class="ax">${masked ? '' : short(v)}</text>`; });
+  } else {
+    const vmax = Math.max(...allV) * 1.05 || 1;
+    Y = v => pt + (1 - v / vmax) * (base - pt);
+    const step = Math.pow(10, Math.floor(Math.log10(vmax / 4))), nice = [1, 2, 5, 10].map(m => m * step).find(x => vmax / x <= 5);
+    for (let v = nice; v <= vmax; v += nice) g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${pl - 8}" y="${Y(v) + 4}" text-anchor="end" class="ax">${masked ? '' : short(v)}</text>`;
+  }
   const every = Math.max(1, Math.ceil(yrs.length / Math.floor((W - pl) / 44)));
   yrs.forEach((y, i) => { if (i % every === 0) g += `<text x="${X(y)}" y="${H - 6}" text-anchor="middle" class="ax">${String(y).slice(2)}</text>`; });
   const bwid = Math.max(3, Math.min(28, bw * 0.6));
-  const bars = L.act.map(a => `<rect x="${X(a.year) - bwid / 2}" y="${Y(a.end)}" width="${bwid}" height="${Y(0) - Y(a.end)}" rx="3" fill="var(--bar)"/>`).join('') +
-    (inYear ? `<rect x="${X(L.thisYear) - bwid / 2}" y="${Y(L.current)}" width="${bwid}" height="${Y(0) - Y(L.current)}" rx="3" fill="var(--bar)" opacity=".45" stroke="var(--ink-2)" stroke-dasharray="3 2"/>` : '');
+  const bars = L.act.map(a => `<rect x="${X(a.year) - bwid / 2}" y="${Y(a.end)}" width="${bwid}" height="${base - Y(a.end)}" rx="3" fill="var(--bar)"/>`).join('') +
+    (inYear ? `<rect x="${X(L.thisYear) - bwid / 2}" y="${Y(L.current)}" width="${bwid}" height="${base - Y(L.current)}" rx="3" fill="var(--bar)" opacity=".45" stroke="var(--ink-2)" stroke-dasharray="3 2"/>` : '');
   const lines = L.scen.map(s => `<path d="M${X(L.last.year)} ${Y(L.last.end)}${s.path.map(p => `L${X(p.year).toFixed(1)} ${Y(p.end).toFixed(1)}`).join('')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round"/>`).join('');
   Object.assign(C, { W, pl, pr, yrs, X, Y, bw });
   el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="자산 성장 추이와 예상">
-    ${g}<line x1="${pl}" x2="${W - pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--axis)"/>${bars}${lines}
+    ${g}<line x1="${pl}" x2="${W - pr}" y1="${base}" y2="${base}" stroke="var(--axis)"/>${bars}${lines}
     <line class="xh" y1="${pt}" y2="${H - pb}" stroke="var(--muted)" stroke-dasharray="3 3" style="display:none"/>
     <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg>`;
 }
@@ -848,52 +857,63 @@ function planHover(e, el, C) {
   return true;
 }
 
-/* S&P500 비교: SPY(배당 반영) × USD/KRW 연말 값 → 원화 기준 연 수익률 */
+/* 시장 지수 비교: SPY·QQQ(배당 반영) × USD/KRW 연말 값 → 원화 기준 연 수익률 */
+const BENCH = [{ key: 'spy', name: 'S&P500', color: 'var(--ink-2)' }, { key: 'qqq', name: '나스닥100', color: 'var(--s2)' }];
 function benchModel(L) {
-  const B = hist?.bench; if (!B?.spy?.d?.length || !B?.fx?.d?.length) return null;
-  const yEnd = s => { const m = {}; s.d.forEach((d, i) => { const v = (s.a || s.c)[i]; if (v != null) m[+d.slice(0, 4)] = v; }); return m; };
-  const spy = yEnd(B.spy), fx = yEnd({ d: B.fx.d, a: B.fx.c });
-  const val = y => spy[y] != null && fx[y] != null ? spy[y] * fx[y] : null;
-  const thisY = L.thisYear;
-  const liveFx = fxNow();
-  const valNow = spy[thisY] != null ? spy[thisY] * (liveFx || fx[thisY]) : null;   // 올해 = 최신 월 값
-  const rows = L.act.filter(a => a.ret != null).map(a => {
-    const v0 = val(a.year - 1), v1 = val(a.year);
-    const sp = v0 && v1 ? v1 / v0 - 1 : null;
-    return { year: a.year, me: a.ret, sp, diff: sp == null ? null : a.ret - sp };
-  });
-  if (thisY === L.last.year + 1 && val(L.last.year) && valNow) {
-    rows.push({ year: thisY, ytd: true, me: L.current / L.last.end - 1, sp: valNow / val(L.last.year) - 1 });
-    rows.at(-1).diff = rows.at(-1).me - rows.at(-1).sp;
-  }
-  const full = rows.filter(r => !r.ytd && r.sp != null);
-  if (!full.length) return null;
+  const B = hist?.bench; if (!B?.fx?.d?.length) return null;
+  const yEnd = (d, v) => { const m = {}; d.forEach((x, i) => { if (v[i] != null) m[+x.slice(0, 4)] = v[i]; }); return m; };
+  const fx = yEnd(B.fx.d, B.fx.c), thisY = L.thisYear, liveFx = fxNow();
+  const out = { idx: {}, cum: [] };
+  const baseRows = L.act.filter(a => a.ret != null);
+  const hasYtd = thisY === L.last.year + 1;
   const gm = xs => Math.exp(xs.reduce((s, x) => s + Math.log(1 + x), 0) / xs.length) - 1;
-  // 누적 (첫 해 전년 말 = 100)
-  let a = 100, b = 100; const cum = [{ year: rows[0].year - 1, me: 100, sp: 100 }];
-  rows.forEach(r => { if (r.sp == null) return; a *= 1 + r.me; b *= 1 + r.sp; cum.push({ year: r.year, ytd: r.ytd, me: a, sp: b }); });
-  return { rows, cum, geoMe: gm(full.map(r => r.me)), geoSp: gm(full.map(r => r.sp)), wins: full.filter(r => r.diff > 0).length, n: full.length };
+  BENCH.forEach(b => {
+    const s = B[b.key]; if (!s?.d?.length) return;
+    const px = yEnd(s.d, s.a || s.c);
+    const val = y => px[y] != null && fx[y] != null ? px[y] * fx[y] : null;
+    const rows = baseRows.map(a => { const v0 = val(a.year - 1), v1 = val(a.year); const r = v0 && v1 ? v1 / v0 - 1 : null; return { year: a.year, me: a.ret, sp: r, diff: r == null ? null : a.ret - r }; });
+    const now = px[thisY] != null ? px[thisY] * (liveFx || fx[thisY]) : null;
+    if (hasYtd && val(L.last.year) && now) { const me = L.current / L.last.end - 1, r = now / val(L.last.year) - 1; rows.push({ year: thisY, ytd: true, me, sp: r, diff: me - r }); }
+    const full = rows.filter(r => !r.ytd && r.sp != null);
+    if (full.length) out.idx[b.key] = { ...b, rows, full, geo: gm(full.map(r => r.sp)), wins: full.filter(r => r.diff > 0).length, n: full.length };
+  });
+  const keys = Object.keys(out.idx); if (!keys.length) return null;
+  out.geoMe = gm(baseRows.map(a => a.ret));
+  // 누적 (첫 해 전년 말 = 100), 모든 지수가 있는 해만
+  const yrs = out.idx[keys[0]].rows.map(r => r.year);
+  const acc = { me: 100 }; keys.forEach(k => acc[k] = 100);
+  out.cum.push({ year: yrs[0] - 1, ...acc });
+  yrs.forEach((y, i) => {
+    const rs = keys.map(k => out.idx[k].rows[i]); if (rs.some(r => !r || r.sp == null)) return;
+    acc.me *= 1 + rs[0].me; keys.forEach((k, j) => acc[k] *= 1 + rs[j].sp);
+    out.cum.push({ year: y, ytd: rs[0].ytd, ...acc });
+  });
+  out.keys = keys;
+  return out;
 }
 function benchBlock(L) {
   const S = benchModel(L);
-  if (!S) return `<div class="card" style="margin-top:14px"><h2>S&P500과 비교</h2><p class="empty" style="padding:28px 0">S&P500 비교 데이터가 아직 없습니다. GitHub 자동 갱신 후 표시됩니다.</p></div>`;
-  CHARTS.benchBars = { type: 'benchBars', S };
+  if (!S) return `<div class="card" style="margin-top:14px"><h2>시장 지수와 비교</h2><p class="empty" style="padding:28px 0">지수 비교 데이터가 아직 없습니다. GitHub 자동 갱신 후 표시됩니다.</p></div>`;
+  if (!S.idx[benchSel]) benchSel = S.keys[0];
+  const I = S.idx[benchSel], last = S.cum.at(-1);
+  CHARTS.benchBars = { type: 'benchBars', I };
   CHARTS.benchCum = { type: 'benchCum', S };
-  const last = S.cum.at(-1);
+  const startY = I.rows[0].year;
   return `
-  <div class="sechead">S&P500과 비교 <span style="font-weight:500;letter-spacing:0">· 원화 환산 · 배당 포함 (SPY × 환율)</span></div>
+  <div class="sechead" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>시장 지수와 비교 <span style="font-weight:500;letter-spacing:0">· 원화 환산 · 배당 포함</span></span>
+    <div class="seg" role="group" aria-label="비교 지수">${S.keys.map(k => `<button data-bench="${k}" aria-pressed="${k === benchSel}">${S.idx[k].name}</button>`).join('')}</div></div>
   <div class="kpis" style="margin-bottom:14px">
-    <div class="card kpi"><div class="label">기하평균 (${S.rows[0].year}~${L.last.year})</div><div class="v num">${pct(S.geoMe, 1)} <span style="color:var(--muted);font-weight:500;font-size:.75em">vs ${pct(S.geoSp, 1)}</span></div><div class="s">내 계좌 vs S&P500 · 차이 <span class="${cls(S.geoMe - S.geoSp)}">${spct(S.geoMe - S.geoSp, 1)}p</span></div></div>
-    <div class="card kpi"><div class="label">S&P500보다 나은 해</div><div class="v num">${S.wins} / ${S.n}년</div><div class="s">연 수익률 기준</div></div>
-    <div class="card kpi"><div class="label">누적 성과 (시작 = 100)</div><div class="v num">${last.me.toFixed(0)} <span style="color:var(--muted);font-weight:500;font-size:.75em">vs ${last.sp.toFixed(0)}</span></div><div class="s">${last.ytd ? '올해 현재까지 포함' : last.year + '년 말 기준'}</div></div>
+    <div class="card kpi"><div class="label">기하평균 (${startY}~${L.last.year})</div><div class="v num">${pct(S.geoMe, 1)} <span style="color:var(--muted);font-weight:500;font-size:.75em">vs ${pct(I.geo, 1)}</span></div><div class="s">내 계좌 vs ${I.name} · 차이 <span class="${cls(S.geoMe - I.geo)}">${spct(S.geoMe - I.geo, 1)}p</span></div></div>
+    <div class="card kpi"><div class="label">${I.name}보다 나은 해</div><div class="v num">${I.wins} / ${I.n}년</div><div class="s">연 수익률 기준</div></div>
+    <div class="card kpi"><div class="label">누적 성과 (시작 = 100)</div><div class="v num">${last.me.toFixed(0)} <span style="color:var(--muted);font-weight:500;font-size:.75em">vs ${last[benchSel].toFixed(0)}</span></div><div class="s">${S.keys.map(k => `${S.idx[k].name} ${last[k].toFixed(0)}`).join(' · ')}${last.ytd ? ' · 올해 포함' : ''}</div></div>
   </div>
   <div class="two">
-    <div class="card"><h2>연도별 수익률 비교</h2><p class="h2sub">막대 위 숫자 = 내 수익률 − S&P500 (초과 수익, %p)${S.rows.at(-1).ytd ? ' · 올해는 연초 이후, 내 쪽은 납입분 포함' : ''}</p>
+    <div class="card"><h2>연도별 수익률 비교</h2><p class="h2sub">막대 위 숫자 = 내 수익률 − ${I.name} (초과 수익, %p)${I.rows.at(-1).ytd ? ' · 26* = 연초 이후, 내 쪽은 납입분 포함' : ''}</p>
       <div class="lchart" data-chart="benchBars"></div>
-      <div class="keys"><span><i style="width:12px;height:10px;background:var(--s1);border-radius:2px"></i>내 계좌</span><span><i style="width:12px;height:10px;background:var(--bar);border-radius:2px"></i>S&P500 (원화)</span></div></div>
+      <div class="keys"><span><i style="width:12px;height:10px;background:var(--s1);border-radius:2px"></i>내 계좌</span><span><i style="width:12px;height:10px;background:${I.color};border-radius:2px"></i>${I.name} (원화)</span></div></div>
     <div class="card"><h2>누적 성과</h2><p class="h2sub">${S.cum[0].year}년 말을 100으로 놓은 누적 수익 (입출금 영향 제외)</p>
       <div class="lchart" data-chart="benchCum"></div>
-      <div class="keys"><span><i style="width:14px;height:2px;background:var(--s1)"></i>내 계좌</span><span><i style="width:14px;height:2px;background:var(--ink-2)"></i>S&P500 (원화)</span></div></div>
+      <div class="keys"><span><i style="width:14px;height:2px;background:var(--s1)"></i>내 계좌</span>${S.keys.map(k => `<span><i style="width:14px;height:2px;background:${S.idx[k].color}"></i>${S.idx[k].name}</span>`).join('')}</div></div>
   </div>`;
 }
 function axisY(vmin, vmax, Y, pl, W, pr, fmt) {
@@ -903,37 +923,41 @@ function axisY(vmin, vmax, Y, pl, W, pr, fmt) {
   return g;
 }
 function drawBench(el, C) {
-  const S = C.S, W = Math.max(280, el.clientWidth), H = 240, pl = 44, pr = 8, pt = 22, pb = 24;
+  const W = Math.max(280, el.clientWidth), H = 240, pl = 44, pr = 8, pt = 22, pb = 24;
   let svg = '';
   if (C.type === 'benchBars') {
-    const R = S.rows.filter(r => r.sp != null);
+    const R = C.I.rows.filter(r => r.sp != null), col = C.I.color;
     const vmax = Math.max(0.05, ...R.flatMap(r => [r.me, r.sp])) * 1.15, vmin = Math.min(0, ...R.flatMap(r => [r.me, r.sp])) * 1.15;
     const bw = (W - pl - pr) / R.length, Y = v => pt + (vmax - v) / (vmax - vmin) * (H - pt - pb);
     const g = axisY(vmin, vmax, Y, pl, W, pr, v => Math.round(v * 100) + '%');
     const w = Math.max(3, Math.min(16, bw * 0.3));
     const bars = R.map((r, i) => {
-      const cx = pl + (i + 0.5) * bw;
-      const rect = (x, v, fill, extra = '') => `<rect x="${x}" y="${Math.min(Y(v), Y(0))}" width="${w}" height="${Math.max(1, Math.abs(Y(v) - Y(0)))}" rx="2" fill="${fill}" ${extra}/>`;
+      const cx = pl + (i + 0.5) * bw, d = Math.round(r.diff * 100);
+      const rect = (x, v, fill) => `<rect x="${x}" y="${Math.min(Y(v), Y(0))}" width="${w}" height="${Math.max(1, Math.abs(Y(v) - Y(0)))}" rx="2" fill="${fill}" ${r.ytd ? 'opacity=".6"' : ''}/>`;
       const top = Math.min(Y(r.me), Y(r.sp), Y(0)) - 6;
-      return rect(cx - w - 1, r.me, 'var(--s1)', r.ytd ? 'opacity=".6"' : '') + rect(cx + 1, r.sp, 'var(--bar)', r.ytd ? 'opacity=".6"' : '') +
-        `<text x="${cx}" y="${top}" text-anchor="middle" class="ax" style="fill:${Math.round(r.diff * 100) > 0 ? 'var(--up)' : Math.round(r.diff * 100) < 0 ? 'var(--down)' : 'var(--muted)'};font-weight:600">${Math.round(r.diff * 100) > 0 ? '+' : ''}${Math.round(r.diff * 100)}</text>` +
+      return rect(cx - w - 1, r.me, 'var(--s1)') + rect(cx + 1, r.sp, col) +
+        `<text x="${cx}" y="${top}" text-anchor="middle" class="ax" style="fill:${d > 0 ? 'var(--up)' : d < 0 ? 'var(--down)' : 'var(--muted)'};font-weight:600">${d > 0 ? '+' : ''}${d}</text>` +
         `<text x="${cx}" y="${H - 6}" text-anchor="middle" class="ax">${String(r.year).slice(2)}${r.ytd ? '*' : ''}</text>`;
     }).join('');
     Object.assign(C, { W, pl, pr, bw, R, X: i => pl + (i + 0.5) * bw });
     svg = g + bars;
   } else {
-    const P = S.cum, vmax = Math.max(...P.flatMap(p => [p.me, p.sp])) * 1.08, vmin = 0;
-    const bw = (W - pl - pr) / (P.length - 1 || 1), X = i => pl + i * bw, Y = v => pt + (vmax - v) / (vmax - vmin) * (H - pt - pb);
-    const g = axisY(vmin, vmax, Y, pl, W, pr, v => v.toFixed(0));
-    const path = (k, col) => `<path d="${P.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p[k]).toFixed(1)).join('')}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+    const S = C.S, P = S.cum, ks = ['me', ...S.keys];
+    const colOf = k => k === 'me' ? 'var(--s1)' : S.idx[k].color;
+    const vmax = Math.max(...P.flatMap(p => ks.map(k => p[k]))) * 1.1;
+    const bw = (W - pl - pr) / (P.length - 1 || 1), X = i => pl + i * bw, Y = v => pt + (vmax - v) / vmax * (H - pt - pb);
+    const g = axisY(0, vmax, Y, pl, W, pr, v => v.toFixed(0));
+    const path = k => `<path d="${P.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p[k]).toFixed(1)).join('')}" fill="none" stroke="${colOf(k)}" stroke-width="2" stroke-linejoin="round"/>`;
     const lab = P.map((p, i) => `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" class="ax">${String(p.year).slice(2)}${p.ytd ? '*' : ''}</text>`).join('');
-    const endL = `<text x="${X(P.length - 1) - 4}" y="${Y(P.at(-1).me) - 6}" text-anchor="end" class="ax" style="fill:var(--ink);font-weight:600">${P.at(-1).me.toFixed(0)}</text><text x="${X(P.length - 1) - 4}" y="${Y(P.at(-1).sp) + (Math.abs(Y(P.at(-1).me) - Y(P.at(-1).sp)) < 16 && P.at(-1).sp <= P.at(-1).me ? 14 : -6)}" text-anchor="end" class="ax" style="font-weight:600">${P.at(-1).sp.toFixed(0)}</text>`;
-    Object.assign(C, { W, pl, pr, bw, P, X });
-    svg = g + path('sp', 'var(--ink-2)') + path('me', 'var(--s1)') + lab + endL +
-      `<circle class="hd hd0" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2" style="display:none"/><circle class="hd hd1" r="4" fill="var(--ink-2)" stroke="var(--surface)" stroke-width="2" style="display:none"/>`;
-    C.Y = Y;
+    // 끝값 라벨 (겹치지 않게 세로로 밀어냄)
+    const ends = ks.map(k => ({ k, y: Y(P.at(-1)[k]) - 6, v: P.at(-1)[k] })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 13) ends[i].y = ends[i - 1].y + 13;
+    const endL = ends.map(e => `<text x="${X(P.length - 1) - 4}" y="${e.y}" text-anchor="end" class="ax" style="fill:${e.k === 'me' ? 'var(--ink)' : 'var(--ink-2)'};font-weight:600">${e.v.toFixed(0)}</text>`).join('');
+    Object.assign(C, { W, pl, pr, bw, P, X, Y, ks });
+    svg = g + S.keys.map(path).join('') + path('me') + lab + endL +
+      ks.map((k, j) => `<circle class="hd hd${j}" r="4" fill="${colOf(k)}" stroke="var(--surface)" stroke-width="2" style="display:none"/>`).join('');
   }
-  el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="S&P500 비교">${svg}
+  el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="시장 지수 비교">${svg}
     <line class="xh" y1="${pt}" y2="${H - pb}" stroke="var(--muted)" stroke-dasharray="3 3" style="display:none"/><rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/></svg>`;
 }
 function benchHover(e, el, C) {
@@ -941,11 +965,12 @@ function benchHover(e, el, C) {
   let txt, cx;
   if (C.type === 'benchBars') {
     const i = Math.floor((x - C.pl) / C.bw), d = C.R[i]; if (!d) { hideHover(el); return false; }
-    cx = C.X(i); txt = `${d.year}${d.ytd ? ' (연초 이후)' : ''} · 내 계좌 ${spct(d.me, 1)} · S&P500 ${spct(d.sp, 1)} · 차이 ${spct(d.diff, 1)}p`;
+    cx = C.X(i); txt = `${d.year}${d.ytd ? ' (연초 이후)' : ''} · 내 계좌 ${spct(d.me, 1)} · ${C.I.name} ${spct(d.sp, 1)} · 차이 ${spct(d.diff, 1)}p`;
   } else {
     const i = Math.round((x - C.pl) / C.bw), d = C.P[i]; if (!d) { hideHover(el); return false; }
-    cx = C.X(i); txt = `${d.year}${d.ytd ? ' (현재)' : '년 말'} · 내 계좌 ${d.me.toFixed(0)} · S&P500 ${d.sp.toFixed(0)}`;
-    [['me', 0], ['sp', 1]].forEach(([k, j]) => { const c = svg.querySelector('.hd' + j); c.setAttribute('cx', cx); c.setAttribute('cy', C.Y(d[k])); c.style.display = ''; });
+    cx = C.X(i);
+    txt = `${d.year}${d.ytd ? ' (현재)' : '년 말'} · 내 계좌 ${d.me.toFixed(0)} · ` + C.S.keys.map(k => `${C.S.idx[k].name} ${d[k].toFixed(0)}`).join(' · ');
+    C.ks.forEach((k, j) => { const c = svg.querySelector('.hd' + j); c.setAttribute('cx', cx); c.setAttribute('cy', C.Y(d[k])); c.style.display = ''; });
   }
   const xh = svg.querySelector('.xh'); xh.setAttribute('x1', cx); xh.setAttribute('x2', cx); xh.style.display = '';
   tip.textContent = txt; tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.add('on');
@@ -1049,6 +1074,10 @@ function render() {
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-tab]');
   if (t) { activeTab = t.dataset.tab; try { localStorage.setItem('pland-tab', activeTab); } catch (_) {} render(); }
+  const bs = e.target.closest('[data-bench]');
+  if (bs) { benchSel = bs.dataset.bench; try { localStorage.setItem('pland-bench', benchSel); } catch (_) {} render(); }
+  const lg = e.target.closest('[data-plog]');
+  if (lg) { planLog = lg.dataset.plog === 'log'; try { localStorage.setItem('pland-log', planLog ? '1' : '0'); } catch (_) {} render(); }
   const hv = e.target.closest('[data-hview]');
   if (hv) { hView = hv.dataset.hview; try { localStorage.setItem('pland-hview', hView); } catch (_) {} render(); }
   if (e.target.closest('#maskBtn')) { masked = !masked; try { localStorage.setItem('pland-mask', masked ? '1' : '0'); } catch (_) {} render(); }
