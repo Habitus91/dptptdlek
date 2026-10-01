@@ -129,8 +129,20 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis)}
 .sect{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.04em;margin:18px 0 2px}
 .sect:first-child{margin-top:0}
 
+.lchart{width:100%}
+.lchart svg{display:block;overflow:visible}
+.lchart .ax{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}
+.loan{padding:16px 0;border-top:1px solid var(--grid)}
+.loan:first-of-type{border-top:0;padding-top:4px}
+.loan-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.loan-g{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.loan-g .v{font-size:19px;font-weight:700;margin-top:2px}
+.loan-g .s,.card .s{font-size:12.5px;color:var(--muted)}
+.prog{height:8px;border-radius:4px;background:var(--surface-2);margin-top:14px;overflow:hidden}
+.prog > div{height:100%;background:var(--s2);border-radius:4px}
+@media (max-width:820px){ .loan-g{grid-template-columns:1fr 1fr} }
 .note{font-size:12.5px;color:var(--muted);margin-top:24px;line-height:1.7}
-.tip{position:fixed;pointer-events:none;z-index:10;background:var(--ink);color:var(--surface);font-size:12.5px;padding:7px 10px;border-radius:8px;white-space:nowrap;opacity:0;transition:opacity .1s;transform:translate(-50%,calc(-100% - 10px))}
+.tip{position:fixed;pointer-events:none;z-index:10;max-width:86vw;background:var(--ink);color:var(--surface);font-size:12.5px;padding:7px 10px;border-radius:8px;white-space:normal;opacity:0;transition:opacity .1s;transform:translate(-50%,calc(-100% - 10px))}
 .tip.on{opacity:1}
 .empty{color:var(--muted);text-align:center;padding:60px 0}
 
@@ -169,7 +181,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--axis)}
   <p class="note">
     · 주식은 GitHub에서 약 15분 간격으로 받아온 시세(Yahoo Finance)로 계산하며, 국내 종목은 15~20분 지연될 수 있습니다.<br>
     · 시세를 받아오지 못한 종목은 매입금액(수량 × 평단가)으로 대신 표시합니다.<br>
-    · 부동산·자동차·현금·부채는 엑셀 기준일 값이며 매월 갱신됩니다. 투자 권유가 아닌 개인 기록용 페이지입니다.
+    · 자동 계산 대출은 기준일 잔액에서 매월 상환일에 일정대로 상환한다고 가정한 추정 잔액입니다(은행 실제 잔액과 소액 차이 가능). 부동산·자동차·현금·수동 부채는 엑셀 입력값입니다. 투자 권유가 아닌 개인 기록용 페이지입니다.
   </p>
 </div>
 <div class="tip" id="tip"></div>
@@ -223,18 +235,142 @@ function evalHolding(h) {
   const qty = +h.qty, avg = +h.avgPrice;
   const fxCost = usd ? (fxNow() || asset.fxManual || 0) : 1;
   const fallback = qty > 0 && avg > 0 ? qty * avg * fxCost : (+h.value || 0);   // 시세 없을 때: 매입금액
-  const out = { ...h, quote: q || null, live: false, cur: fallback, day: null, dayPct: null, pnl: null, pnlPct: null };
+  const out = { ...h, quote: q || null, live: false, cur: fallback, day: null, dayFx: null, dayPx: null, dayPct: null, pnl: null, pnlPct: null };
   if (q && q.prevClose) out.dayPct = q.price / q.prevClose - 1;
   if (q && qty > 0 && fx) {
     out.live = true;
     out.cur = qty * q.price * fx;
-    if (q.prevClose && fxp) out.day = out.cur - qty * q.prevClose * fxp;
+    if (q.prevClose && fxp) {
+      out.day = out.cur - qty * q.prevClose * fxp;
+      out.dayFx = usd ? qty * q.prevClose * (fx - fxp) : 0;   // 환율 변동분
+      out.dayPx = out.day - out.dayFx;                         // 주가 변동분
+    }
     if (+h.avgPrice > 0) {
       out.pnlPct = q.price / h.avgPrice - 1;
       out.pnl = qty * (q.price - h.avgPrice) * fx;
     }
   }
   return out;
+}
+
+
+/* ---------- 대출 상환 계산 ---------- */
+const LOAN_METHODS = ['원리금균등', '원금균등', '만기일시'];
+const ym = d => d.getFullYear() * 12 + d.getMonth();
+function payDate(t, day) { const y = Math.floor(t / 12), m = t % 12; return new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate())); }
+function loanSchedule(d) {
+  const L = d.loan;
+  if (!L || L.rate == null || !L.maturity || !LOAN_METHODS.includes(L.method) || !(L.payDay >= 1)) return null;
+  const base = new Date(L.baseDate + 'T00:00:00'), mat = new Date(L.maturity + 'T00:00:00');
+  if (isNaN(base) || isNaN(mat) || mat <= base || !(d.value > 0)) return null;
+  const dates = [];
+  let t = ym(base), pd = payDate(t, L.payDay);
+  if (pd <= base) pd = payDate(++t, L.payDay);
+  while (pd <= mat && dates.length < 720) { dates.push(pd); pd = payDate(++t, L.payDay); }
+  if (!dates.length || ym(dates[dates.length - 1]) < ym(mat)) dates.push(mat);   // 만기일에 잔액 정산
+  const n = dates.length, i = L.rate / 12, B0 = d.value;
+  const pmt = i ? B0 * i / (1 - Math.pow(1 + i, -n)) : B0 / n;
+  const rows = []; let B = B0;
+  for (let k = 0; k < n; k++) {
+    const int = B * i;
+    let prin = L.method === '원리금균등' ? pmt - int : L.method === '원금균등' ? B0 / n : 0;
+    if (k === n - 1) prin = B;
+    B = Math.max(0, B - prin);
+    rows.push({ date: dates[k], int, prin, pay: int + prin, bal: B });
+  }
+  return rows;
+}
+function evalLoan(d) {
+  const rows = loanSchedule(d);
+  if (!rows) return { ...d, auto: false, wantedAuto: !!d.loan };
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const paid = rows.filter(r => r.date <= today), future = rows.filter(r => r.date > today);
+  const cur = paid.length ? paid[paid.length - 1].bal : d.value;
+  return { ...d, auto: true, excel: d.value, value: cur, rows, future, next: future[0] || null,
+    remInterest: future.reduce((s, r) => s + r.int, 0), paidPrin: d.value - cur,
+    progress: d.loan.original > 0 ? 1 - cur / d.loan.original : null };
+}
+const fmtDate = d => `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+const fmtLeft = n => { const y = Math.floor(n / 12), m = n % 12; return (y ? y + '년 ' : '') + (m || !y ? m + '개월' : ''); };
+
+/* 잔액 감소 그래프 (SVG, hover 툴팁) */
+const CHARTS = {};
+function balanceChart(id, loans) {
+  CHARTS[id] = { loans };
+  return `<div class="lchart" data-chart="${id}"></div>
+  <div class="keys">${loans.map((l, k) => `<span><i style="width:14px;height:2px;background:var(--s${k + 1})"></i>${esc(l.name)}</span>`).join('')}</div>`;
+}
+function drawCharts() {
+  document.querySelectorAll('[data-chart]').forEach(el => {
+    const C = CHARTS[el.dataset.chart]; if (!C) return;
+    const W = Math.max(280, el.clientWidth), H = 220, pl = 64, pr = 12, pt = 12, pb = 26;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const series = C.loans.map((l, k) => ({ name: l.name, color: `var(--s${k + 1})`,
+      pts: [{ t: today, v: l.value }, ...l.future.map(r => ({ t: r.date, v: r.bal }))] }));
+    const t0 = +today, t1 = Math.max(...series.map(s => +s.pts[s.pts.length - 1].t));
+    const vmax = Math.max(...series.map(s => s.pts[0].v)) * 1.05 || 1;
+    const X = t => pl + (t - t0) / (t1 - t0 || 1) * (W - pl - pr), Y = v => pt + (1 - v / vmax) * (H - pt - pb);
+    const step = Math.pow(10, Math.floor(Math.log10(vmax / 4))), nice = [1, 2, 5, 10].map(m => m * step).find(x => vmax / x <= 5);
+    let g = '';
+    for (let v = nice; v <= vmax; v += nice) g += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/><text x="${pl - 8}" y="${Y(v) + 4}" text-anchor="end" class="ax">${masked ? '' : short(v)}</text>`;
+    const y0 = today.getFullYear(), y1 = new Date(t1).getFullYear(), ys = Math.max(1, Math.ceil((y1 - y0) / Math.max(2, Math.floor((W - pl) / 90))));
+    for (let y = y0 + 1; y <= y1; y += ys) g += `<text x="${X(+new Date(y, 0, 1))}" y="${H - 6}" text-anchor="middle" class="ax">${y}</text>`;
+    const lines = series.map(s => `<path d="${s.pts.map((p, i) => (i ? 'L' : 'M') + X(+p.t).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join('')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round"/>`).join('');
+    Object.assign(C, { series, X, Y, t0, t1, W, pl, pr });
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="대출 잔액 감소 추이">
+      ${g}<line x1="${pl}" x2="${W - pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--axis)"/><text x="${pl - 8}" y="${Y(0) + 4}" text-anchor="end" class="ax">0</text>${lines}
+      <line class="xh" y1="${pt}" y2="${H - pb}" stroke="var(--muted)" stroke-dasharray="3 3" style="display:none"/>
+      ${series.map((s, k) => `<circle class="hd hd${k}" r="4" fill="${s.color}" stroke="var(--surface)" stroke-width="2" style="display:none"/>`).join('')}
+      <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+    </svg>`;
+  });
+}
+let rzT; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(drawCharts, 150); });
+function chartHover(e) {
+  const el = e.target.closest('[data-chart]'); if (!el) return false;
+  const C = CHARTS[el.dataset.chart], svg = el.querySelector('svg'); if (!C || !svg || !C.series) return false; const r = svg.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * C.W;
+  if (x < C.pl || x > C.W - C.pr) { hideHover(el); return false; }
+  const t = C.t0 + (x - C.pl) / (C.W - C.pl - C.pr) * (C.t1 - C.t0);
+  const xh = svg.querySelector('.xh'); xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.style.display = '';
+  const parts = C.series.map((s, k) => {
+    let p = s.pts[0]; for (const q of s.pts) { if (+q.t <= t) p = q; else break; }
+    const dot = svg.querySelector('.hd' + k);
+    if (+s.pts[s.pts.length - 1].t < t) { dot.style.display = 'none'; return `${s.name} 완납`; }
+    dot.setAttribute('cx', C.X(+p.t)); dot.setAttribute('cy', C.Y(p.v)); dot.style.display = '';
+    return `${s.name} ${short(p.v)}`;
+  });
+  const d = new Date(t);
+  tip.textContent = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')} · ` + parts.join(' · ');
+  tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.add('on');
+  return true;
+}
+function hideHover(el) { el.querySelectorAll('.xh,.hd').forEach(n => n.style.display = 'none'); }
+
+function loanBlock(ds, id) {
+  const autos = ds.filter(d => d.auto);
+  const pending = ds.filter(d => d.wantedAuto && !d.auto);
+  if (!autos.length && !pending.length) return '';
+  const cards = autos.map(d => {
+    const n = d.next;
+    return `<div class="loan">
+      <div class="loan-h"><b>${esc(d.name)}</b><span class="pill">${esc(d.loan.method)} · 연 ${(d.loan.rate * 100).toFixed(2)}%</span></div>
+      <div class="loan-g">
+        <div><div class="label">오늘 기준 잔액</div><div class="v num">${short(d.value)}</div><div class="s">${d.paidPrin >= 1 ? '기준일 이후 ' + short(d.paidPrin) + ' 상환' : '기준일 이후 아직 상환 전'}</div></div>
+        <div><div class="label">다음 상환 ${n ? fmtDate(n.date) : ''}</div><div class="v num">${n ? short(n.pay) : '완납'}</div><div class="s">${n ? `원금 ${short(n.prin)} · 이자 ${short(n.int)}` : ''}</div></div>
+        <div><div class="label">남은 기간</div><div class="v num">${fmtLeft(d.future.length)}</div><div class="s">만기 ${esc(d.loan.maturity.replace(/-/g, '.'))}</div></div>
+        <div><div class="label">남은 이자 합계</div><div class="v num">${short(d.remInterest)}</div><div class="s">일정대로 상환 시</div></div>
+      </div>
+      ${d.progress != null ? `<div class="prog"><div style="width:${Math.min(100, Math.max(0, d.progress * 100))}%"></div></div><div class="s" style="margin-top:6px">상환 진행률 ${pct(d.progress)} · 최초 ${short(d.loan.original)}</div>` : ''}
+    </div>`;
+  }).join('');
+  return `<div class="card" style="margin-top:14px">
+    <h2>대출 상환 현황</h2>
+    <p class="h2sub">기준일 잔액·금리·만기일로 계산한 추정치 · 매월 상환일에 일정대로 상환한다고 가정</p>
+    ${cards}
+    ${pending.length ? `<p class="s" style="margin:10px 0 0">자동 계산 대기: ${pending.map(d => esc(d.name)).join(', ')} — 엑셀 부채 시트의 금리·만기일·상환방식·상환일을 채우면 계산됩니다.</p>` : ''}
+    ${autos.length ? `<div style="margin-top:18px"><div class="label" style="margin-bottom:6px">잔액 감소 추이</div>${balanceChart(id, autos)}</div>` : ''}
+  </div>`;
 }
 
 function model() {
@@ -247,7 +383,7 @@ function model() {
 
   const realEstate = asset.assets.filter(a => a.group === '부동산');
   const others = asset.assets.filter(a => a.group !== '부동산' && a.group !== '예수금');
-  const debts = asset.debts;
+  const debts = asset.debts.map(evalLoan);
   const sum = arr => arr.reduce((s, a) => s + a.value, 0);
 
   const tabs = {
@@ -259,10 +395,12 @@ function model() {
   const totalDebt = sum(debts);
   const liveH = H.filter(h => h.live);
   const day = liveH.length ? liveH.reduce((s, h) => s + (h.day || 0), 0) : null;
+  const dayFx = liveH.length ? liveH.reduce((s, h) => s + (h.dayFx || 0), 0) : null;
+  const dayPx = day == null ? null : day - dayFx;
   const pnlH = H.filter(h => h.pnl != null);
   const pnl = pnlH.length ? pnlH.reduce((s, h) => s + h.pnl, 0) : null;
   const usdTotal = H.filter(h => h.currency === 'USD').reduce((s, h) => s + h.cur, 0);
-  return { H, stockTotal, byAcct: Object.values(byAcct), deposit, realEstate, others, debts, tabs, totalAsset, totalDebt, day, pnl, pnlH, liveH, usdTotal };
+  return { H, stockTotal, byAcct: Object.values(byAcct), deposit, realEstate, others, debts, tabs, totalAsset, totalDebt, day, dayFx, dayPx, pnl, pnlH, liveH, usdTotal };
 }
 
 /* ---------- render ---------- */
@@ -290,7 +428,7 @@ function renderSummary(M) {
       <div class="kpis" style="margin-top:22px">
         <div class="kpi"><div class="label">총자산</div><div class="v num">${short(M.totalAsset)}</div></div>
         <div class="kpi"><div class="label">총부채</div><div class="v num">${short(M.totalDebt)}</div><div class="s">부채비율 ${pct(M.totalDebt / M.totalAsset)}</div></div>
-        <div class="kpi"><div class="label">오늘 주식 변동</div><div class="v num">${dayHtml}</div></div>
+        <div class="kpi"><div class="label">오늘 주식 변동</div><div class="v num">${dayHtml}</div>${M.day == null ? '' : `<div class="s">주가 <span class="${cls(M.dayPx)}">${signed(M.dayPx)}</span> · 환율 <span class="${cls(M.dayFx)}">${signed(M.dayFx)}</span></div>`}</div>
       </div>
     </div>
     <div class="card">
@@ -348,7 +486,7 @@ function renderStock(M) {
     <div class="card kpi"><div class="label">주식 평가액</div><div class="v num">${short(M.stockTotal)}</div><div class="s">예수금 ${short(M.deposit)} 별도</div></div>
     <div class="card kpi"><div class="label">달러 / 원화 자산</div><div class="v num">${pct(M.usdTotal / M.stockTotal, 0)} <span style="color:var(--muted);font-weight:500">/ ${pct(1 - M.usdTotal / M.stockTotal, 0)}</span></div><div class="s">${short(M.usdTotal)} / ${short(M.stockTotal - M.usdTotal)}</div></div>
     <div class="card kpi"><div class="label">평가손익</div><div class="v num">${pnlKpi}</div><div class="s">${M.pnlH.length ? M.pnlH.length + '개 종목 기준' : ''}</div></div>
-    <div class="card kpi"><div class="label">USD/KRW</div><div class="v num">${fx ? nf.format(fx.toFixed(2)) : '-'}</div><div class="s ${cls(fx - fxPrev())}">${fx && fxPrev() ? spct(fx / fxPrev() - 1) + ' 전일대비' : ''}</div></div>
+    <div class="card kpi"><div class="label">USD/KRW</div><div class="v num">${fx ? nf.format(fx.toFixed(2)) : '-'}</div><div class="s"><span class="${cls(fx - fxPrev())}">${fx && fxPrev() ? spct(fx / fxPrev() - 1) : ''}</span>${M.dayFx == null ? '' : ` · 오늘 환율 효과 <span class="${cls(M.dayFx)}">${signed(M.dayFx)}</span>`}</div></div>
   </div>
 
   <div class="card" style="margin-bottom:14px">
@@ -386,7 +524,7 @@ function renderRealEstate(M) {
                 { name: '순지분', value: Math.max(0, equity), color: 'var(--s2)' }];
   return `
   <div class="kpis" style="margin-bottom:14px">
-    <div class="card kpi"><div class="label">부동산 가치</div><div class="v num">${short(val)}</div><div class="s">엑셀 기준일 값</div></div>
+    <div class="card kpi"><div class="label">부동산 가치</div><div class="v num">${short(val)}</div><div class="s">엑셀 입력값</div></div>
     <div class="card kpi"><div class="label">담보대출 합계</div><div class="v num">${short(debt)}</div><div class="s">${ds.length}건</div></div>
     <div class="card kpi"><div class="label">순지분</div><div class="v num">${short(equity)}</div><div class="s">가치 − 대출</div></div>
     <div class="card kpi"><div class="label">LTV</div><div class="v num">${pct(debt / val)}</div><div class="s">대출 ÷ 가치</div></div>
@@ -404,10 +542,11 @@ function renderRealEstate(M) {
       <div class="sect">자산</div>
       ${M.realEstate.map(a => `<div class="lrow"><span>${esc(a.name)}</span><span class="r">${won(a.value)}</span></div>`).join('')}
       <div class="sect">부채</div>
-      ${ds.map(d => `<div class="lrow"><span>${esc(d.name)}</span><span class="r">−${won(d.value)}</span></div>`).join('')}
+      ${ds.map(d => `<div class="lrow"><span>${esc(d.name)}${d.auto ? '<span class="acct">자동 계산 · 오늘 기준</span>' : ''}</span><span class="r">−${won(d.value)}</span></div>`).join('')}
       <div class="lrow total"><span>순지분</span><span class="r">${won(equity)}</span></div>
     </div>
-  </div>`;
+  </div>
+  ${loanBlock(ds, 're')}`;
 }
 
 function renderOther(M) {
@@ -440,7 +579,8 @@ function renderOther(M) {
       ${list(ds)}
       <div class="lrow total"><span>합계</span><span class="r">${won(D)}</span></div>
     </div>
-  </div>`;
+  </div>
+  ${loanBlock(ds, 'ot')}`;
 }
 
 function render() {
@@ -465,6 +605,7 @@ function render() {
   const body = activeTab === '부동산' ? renderRealEstate(M) : activeTab === '기타' ? renderOther(M) : renderStock(M);
   document.getElementById('app').innerHTML = renderSummary(M) +
     `<nav class="tabs" role="tablist">${tabBtns}</nav><section class="panel" role="tabpanel">${body}</section>`;
+  drawCharts();
 }
 
 /* ---------- events ---------- */
@@ -475,6 +616,8 @@ document.addEventListener('click', e => {
 });
 const tip = document.getElementById('tip');
 document.addEventListener('pointermove', e => {
+  document.querySelectorAll('[data-chart]').forEach(c => { if (!c.contains(e.target)) hideHover(c); });
+  if (chartHover(e)) return;
   const el = e.target.closest('[data-tip]');
   if (!el) { tip.classList.remove('on'); return; }
   tip.textContent = el.dataset.tip; tip.style.left = e.clientX + 'px'; tip.style.top = e.clientY + 'px'; tip.classList.add('on');

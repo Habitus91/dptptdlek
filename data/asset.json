@@ -1,7 +1,7 @@
 {
     "baseDate":  "2026-10-01",
     "fxManual":  1360,
-    "exportedAt":  "2026-10-01T10:40:36",
+    "exportedAt":  "2026-10-01T11:29:48",
     "holdings":  [
                      {
                          "account":  "해외주식 계좌",
@@ -157,17 +157,17 @@
     "assets":  [
                    {
                        "group":  "부동산",
-                       "name":  "아파트",
+                       "name":  "S아파트",
                        "value":  400000000
                    },
                    {
                        "group":  "자동차",
-                       "name":  "차량 1",
+                       "name":  "차량A",
                        "value":  7950000
                    },
                    {
                        "group":  "자동차",
-                       "name":  "차량 2",
+                       "name":  "차량T",
                        "value":  50040000
                    },
                    {
@@ -190,12 +190,28 @@
                   {
                       "name":  "주택담보대출 A",
                       "tab":  "부동산",
-                      "value":  217335181
+                      "value":  214943562,
+                      "loan":  {
+                                   "baseDate":  "2026-10-01",
+                                   "rate":  0.0235,
+                                   "maturity":  "2053-05-02",
+                                   "method":  "원리금균등",
+                                   "payDay":  2,
+                                   "original":  228100000
+                               }
                   },
                   {
                       "name":  "주택담보대출 B",
                       "tab":  "부동산",
-                      "value":  54933412
+                      "value":  54775617,
+                      "loan":  {
+                                   "baseDate":  "2026-10-01",
+                                   "rate":  0.0405,
+                                   "maturity":  "2073-05-02",
+                                   "method":  "원리금균등",
+                                   "payDay":  2,
+                                   "original":  56000000
+                               }
                   },
                   {
                       "name":  "마이너스통장",
@@ -205,7 +221,15 @@
                   {
                       "name":  "카드할부",
                       "tab":  "기타",
-                      "value":  24809452
+                      "value":  21158016,
+                      "loan":  {
+                                   "baseDate":  "2026-09-15",
+                                   "rate":  0.052,
+                                   "maturity":  "2029-05-15",
+                                   "method":  "원리금균등",
+                                   "payDay":  15,
+                                   "original":  null
+                               }
                   }
               ]
 }
