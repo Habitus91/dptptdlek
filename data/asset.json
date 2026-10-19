@@ -1,7 +1,7 @@
 {
-    "baseDate":  "2026-10-01",
+    "baseDate":  "2026-10-19",
     "fxManual":  1360,
-    "exportedAt":  "2026-10-19T10:00:05",
+    "exportedAt":  "2026-10-19T11:19:49",
     "holdings":  [
                      {
                          "account":  "해외주식 계좌",
@@ -56,8 +56,8 @@
                          "name":  "TIGER 미국 나스닥 100",
                          "ticker":  "133690.KS",
                          "currency":  "KRW",
-                         "qty":  100,
-                         "avgPrice":  123663
+                         "qty":  135,
+                         "avgPrice":  136757
                      },
                      {
                          "account":  "개인연금",
@@ -129,7 +129,7 @@
                    {
                        "group":  "예수금",
                        "name":  "주식 예수금",
-                       "value":  292376
+                       "value":  241897
                    }
                ],
     "debts":  [
@@ -162,7 +162,7 @@
                   {
                       "name":  "마이너스통장",
                       "tab":  "기타",
-                      "value":  7469173
+                      "value":  12640220
                   },
                   {
                       "name":  "카드할부",
